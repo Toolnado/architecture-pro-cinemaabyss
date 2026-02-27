@@ -1,0 +1,70 @@
+@startuml CinemaAbyss-ToBeArchitecture
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CinemaAbyss — Target Architecture (C4 Container)
+
+Person(user, "User", "Accesses the service via\nmobile app, browser or Smart TV")
+Person(admin, "Administrator", "Manages content\nand users")
+
+System_Ext(payment_gateway, "Payment System", "External payment provider")
+System_Ext(content_providers, "Online Cinemas", "Licensed content sources")
+System_Ext(recommendation, "Recommendation System", "External ML service,\npersonalized content picks")
+System_Ext(loyalty, "Loyalty Services\n& Marketplaces", "External partners")
+
+System_Boundary(cinemaabyss, "CinemaAbyss") {
+
+    Container(api_gateway, "API Gateway", "Go", "Single entry point\nfor all clients.\nRequest routing and load balancing")
+
+    Container(users_service, "Users Service", "Go", "Authentication, user profile\nmanagement, favorites")
+    Container(movies_service, "Movies Service", "Go", "Movie metadata,\ngenres, actors, ratings")
+    Container(content_service, "Content Service", "Go", "Video content management,\nlicensing, streaming")
+    Container(payments_service, "Payments Service", "Go", "Payments, billing,\ntransactions")
+    Container(subscriptions_service, "Subscriptions Service", "Go", "Subscriptions, pricing plans,\ndiscounts")
+    Container(events_service, "Events Service", "Go", "Inter-service event communication.\nConsumes all Kafka topics,\nprocesses and routes events")
+
+    Container(kafka, "Apache Kafka", "Message Broker", "Async event exchange.\nTopics: user-events,\nmovie-events, payment-events")
+
+    ContainerDb(users_db, "Users DB", "PostgreSQL", "Users, profiles, favorites")
+    ContainerDb(movies_db, "Movies DB", "PostgreSQL", "Movie metadata,\ngenres, actors, ratings")
+    ContainerDb(content_db, "Content DB", "PostgreSQL", "Content, licenses")
+    ContainerDb(payments_db, "Payments DB", "PostgreSQL", "Payments, transactions")
+    ContainerDb(subscriptions_db, "Subscriptions DB", "PostgreSQL", "Subscriptions, plans, discounts")
+
+    Container(s3, "S3 Storage", "Object Storage", "Video content storage")
+}
+
+Rel(user, api_gateway, "HTTPS")
+Rel(admin, api_gateway, "HTTPS")
+
+Rel(api_gateway, users_service, "HTTP")
+Rel(api_gateway, movies_service, "HTTP")
+Rel(api_gateway, content_service, "HTTP")
+Rel(api_gateway, payments_service, "HTTP")
+Rel(api_gateway, subscriptions_service, "HTTP")
+
+Rel(users_service, users_db, "SQL")
+Rel(movies_service, movies_db, "SQL")
+Rel(content_service, content_db, "SQL")
+Rel(payments_service, payments_db, "SQL")
+Rel(subscriptions_service, subscriptions_db, "SQL")
+
+Rel(users_service, kafka, "Publishes", "user-events")
+Rel(movies_service, kafka, "Publishes", "movie-events")
+Rel(payments_service, kafka, "Publishes", "payment-events")
+
+Rel(events_service, kafka, "Consumes", "all topics")
+
+Rel(subscriptions_service, kafka, "Consumes", "payment-events")
+
+Rel(recommendation, kafka, "Consumes", "user-events, movie-events")
+Rel(movies_service, recommendation, "HTTPS")
+
+Rel(content_service, s3, "S3 API")
+Rel(content_service, content_providers, "HTTPS")
+Rel(payments_service, payment_gateway, "HTTPS")
+Rel(events_service, loyalty, "HTTPS")
+
+@enduml
